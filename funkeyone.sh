@@ -10,9 +10,11 @@
 #   * Flash de-licensing — on disk: the game's Flash.ocx is the shim, the real
 #     control is FlashReal.ocx (the shim loads it). Nothing to set here.
 #
-# The game does not start the portal reader itself, so we run MegaByte.exe
-# alongside it; MegaByte finds the game window, reads the hub over the bridge,
-# and forwards figures via WM_COPYDATA. It is stopped when the game exits.
+# The game starts the portal reader (MegaByte.exe -MBRun) itself when its Hub
+# setting is on, and MegaByte inherits the env below, so it reads the hub over
+# the bridge. Don't start a second copy here: if it comes up after the game's
+# startup check, two readers fight over the hub and the loser makes the game
+# show "connect the hub". We only make sure MegaByte is gone when we exit.
 #
 # Env knobs:
 #   FUNKEY_HOME          override the "U.B. Funkeys" install dir
@@ -39,7 +41,6 @@ if [ -z "$FUNKEY_HOME" ] || [ ! -d "$FUNKEY_HOME/RadicaGame" ]; then
   exit 1
 fi
 GAME_DIR="$FUNKEY_HOME/RadicaGame"
-MB_DIR="$FUNKEY_HOME/MegaByte"
 
 # ---- Wine environment --------------------------------------------------------
 # Locate the USB bridge (the built libusb-1.0.dll.so): explicit override first,
@@ -55,12 +56,8 @@ BRIDGE_DIR="${BRIDGE_DIR:-$HERE/winebridge}"
 export WINEDLLPATH="$BRIDGE_DIR${WINEDLLPATH:+:$WINEDLLPATH}"
 export WINEDLLOVERRIDES="libusb-1.0=b;ninput=n,b${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
 
-# ---- portal reader alongside the game ---------------------------------------
-if [ -x "$MB_DIR/MegaByte.exe" ] || [ -f "$MB_DIR/MegaByte.exe" ]; then
-  ( cd "$MB_DIR" && exec wine MegaByte.exe -MBRun ) >/dev/null 2>&1 &
-  MB_PID=$!
-  trap 'kill "$MB_PID" 2>/dev/null; pkill -f "MegaByte.exe" 2>/dev/null' EXIT INT TERM
-fi
+# ---- portal reader: started by the game, cleaned up by us --------------------
+trap 'pkill -f "MegaByte.exe" 2>/dev/null || true' EXIT INT TERM
 
 cd "$GAME_DIR"
 wine FunkeyOne.exe "$@"

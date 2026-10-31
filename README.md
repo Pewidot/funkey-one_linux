@@ -19,8 +19,9 @@ with each of those.
 * `wineninput/` is a replacement `ninput.dll`. Wine's own one has an entry point
   (`StopInteractionContext`) that aborts the process when Flash calls it; ours
   just returns and does nothing.
-* `funkeyone.sh` is the launcher. It starts the portal reader (`MegaByte.exe`)
-  next to the game, because the game doesn't start it by itself.
+* `funkeyone.sh` is the launcher. It sets up the environment so the bridge and
+  the shims are active, then starts the game. The game starts the portal
+  reader (`MegaByte.exe`) by itself, and that inherits the same environment.
 
 You bring the game. Nothing in here contains the installer, the SWFs, Flash, or
 any Funkeys assets. The setup downloads `UBFunkeys-Setup-x64.exe` from
@@ -98,9 +99,10 @@ all compiled on your machine so it matches your Wine and libusb.
 ## If the hub isn't detected
 
 Launch through `./funkeyone.sh` (or the menu entry), not the game `.exe`
-directly. Only the launcher starts the portal reader with the bridge active;
-run the exe on its own and nothing reads the hub. To see what the bridge is
-doing:
+directly. The game always starts the portal reader, but only the launcher
+gives it the bridge; run the exe on its own and the reader can't see the hub.
+Also check that the Hub option in the game's settings is on: with it off, the
+game doesn't start the reader at all. To see what the bridge is doing:
 
 ```bash
 FUNKEY_BRIDGE_DEBUG=1 ./funkeyone.sh
@@ -123,6 +125,10 @@ around.
 
 A couple of other failure modes:
 
+* A "connect the hub" prompt even though the hub is plugged in usually means
+  two portal readers are running. Older versions of `funkeyone.sh` started a
+  second `MegaByte.exe` next to the one the game starts, and the two fight over
+  the hub. Update the launcher, or make sure nothing else starts MegaByte.
 * Crash on startup at `AxHost.CreateWithLicense` means the Flash shim swap
   didn't take. The game dir's `Flash.ocx` should be the ~180 KB shim, with the
   real ~14 MB control renamed to `FlashReal.ocx`.
